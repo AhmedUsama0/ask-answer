@@ -24,7 +24,6 @@ class AnswerController extends Answers
                 "answer" => $answer,
                 "username" => $username,
                 "userImage" => $image,
-                "upvote" => $upvote,
                 "user_id" => $user_id,
             ];
             array_push($arr, $user);
