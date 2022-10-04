@@ -16,9 +16,6 @@ class AnswerController extends Answers
         while ($answers = $stmt->fetch(PDO::FETCH_ASSOC)) {
 
             extract($answers);
-            if ($image === null) {
-                $image = "male.png";
-            }
             $user = [
                 "answer_id" => $answer_id,
                 "answer" => $answer,
