@@ -1,66 +1,80 @@
 <template>
-  <div class="question-details">
-    <NavBar />
-    <div class="container">
-      <div class="questions col-12 col-lg-9 mx-auto mt-3">
-        <div v-if="this.question !== null" class="col-12 mx-auto question">
-          <img
-            v-if="question['userImage'] !== null"
-            :src="require(`@/php/uploads/${question['userImage']}`)"
-            alt="userImage"
-            height="50px"
-            width="50px"
-            class="userImage"
-          />
-          <span
-            @click="viewProfile(question['user_id'])"
-            style="cursor: pointer"
-            >{{ question["username"] }}</span
-          >
-          <br />
-          <br />
-          {{ question["question"] }} <br />
-        </div>
-
-        <hr />
-        <div class="textarea">
-          <textarea
-            placeholder="Enter your answer"
-            name="question_id"
-            class="col-12 card p-2"
-            v-on:keyup.enter="send"
-            v-model="answer"
-          />
-        </div>
-        <div class="answers mt-5">
-          <UsersAnswers
-            :allAnswers="allAnswers"
-            :user_id="user_id"
-            :username="username"
-            :viewProfile="viewProfile"
-          />
-        </div>
+  <div class="container mt-5">
+    <transition name="fade" appear>
+      <div
+        class="d-flex justify-content-center align-items-center text-capitalize text-white fs-2"
+        style="height: 70vh"
+        v-if="!isQuestionExist"
+      >
+        this question doesn't exist.
       </div>
-    </div>
+      <div
+        class="card bg-dark text-white pt-2"
+        style="min-height: 300px"
+        v-if="isQuestionExist"
+      >
+        <div
+          class="hstack gap-2"
+          @click="showProfile(question.user_id)"
+          role="button"
+          style="width: fit-content"
+        >
+          <img
+            :src="'/server/uploads/' + question.image"
+            width="50px"
+            height="50px"
+            class="ms-3 rounded-circle"
+          />
+          <div>{{ question.username }}</div>
+        </div>
+        <div class="card-body">
+          <div class="card-text" style="white-space: pre-wrap">
+            {{ question.question }}
+          </div>
+          <div class="form-floating mt-4 text-dark">
+            <textarea
+              class="form-control bg-dark shadow-none text-white"
+              placeholder="Leave an answer here"
+              id="floatingTextarea"
+              style="resize: none"
+              v-model="answer"
+              @keydown.enter.exact.prevent="send"
+              @keydown.enter.shift.exact.prevent="answer += '\n'"
+            ></textarea>
+            <label for="floatingTextarea" class="text-capitalize text-white"
+              >Enter your answer here</label
+            >
+          </div>
+        </div>
+        <hr />
+        <UsersAnswers
+          :allAnswers="allAnswers"
+          :user_id="user_id"
+          :username="username"
+          :isAnswersExist="isAnswersExist"
+        />
+      </div>
+    </transition>
   </div>
 </template>
 
 <script>
-import $ from "jquery";
-import NavBar from "@/components/NavBar.vue";
 import UsersAnswers from "@/components/UsersAnswers.vue";
+import viewProfile from "@/js/viewProfile";
 export default {
   name: "UserQuestionView",
   components: {
-    NavBar,
     UsersAnswers,
   },
 
   data: function () {
     return {
-      question: null,
-      allAnswers: null,
+      question: [],
+      allAnswers: [],
       answer: "",
+      interval: null,
+      isQuestionExist: false,
+      isAnswersExist: true,
     };
   },
 
@@ -78,110 +92,109 @@ export default {
   },
 
   methods: {
-    viewProfile(user_id) {
-      if (user_id === this.$store.state.user_id) {
-        this.$router.push({ name: "profile" });
-      } else {
-        this.$router.push({ path: `/profile/${user_id}` });
-      }
+    showProfile(user_id) {
+      viewProfile(user_id);
     },
     send() {
-      if (this.answer !== "\n") {
-        $.ajax({
+      if (this.answer.trim()) {
+        fetch("/server/api/Answers/createAnswer.php", {
           method: "POST",
-          url: "http://localhost/ask-answer/src/php/createAnswer.php",
-          data: {
+          body: JSON.stringify({
             question_id: this.question_id,
-            answer: this.answer,
+            answer: this.answer.trim(),
             user_id: this.user_id,
+          }),
+          headers: {
+            "Content-type": "application/json",
           },
         });
         this.answer = "";
       }
     },
 
-    getAnswers() {
-      $.ajax({
-        method: "GET",
-        cache: true,
-        url: "http://localhost/ask-answer/src/php/getAnswers.php",
-        data: { question_id: this.question_id },
-        //data type JSON convert the json we get from the server to javascript
-        //object so we no longer need to parsing the response from the server
-        //dataType specifies the expect type of data we recieved from the server
-        dataType: "JSON",
-        success: (data) => {
-          //we no longer need try-catch block but we use it to be safe and to know
-          //if there is any error
-          try {
-            this.allAnswers = data;
-          } catch (err) {
-            console.log("Error is " + err.message);
-          }
+    async getAnswers() {
+      const response = await fetch("/server/api/Answers/readAnswers.php", {
+        method: "POST",
+        body: JSON.stringify({
+          question_id: this.question_id,
+        }),
+        headers: {
+          Accept: "application/json",
+          "Content-type": "application/json",
         },
       });
+      const answers = await response.json();
+      if (answers.error) {
+        this.isAnswersExist = false;
+      }
+      if (answers.length) {
+        this.isAnswersExist = true;
+        this.allAnswers = answers;
+      }
+    },
+    async getQuestion() {
+      const response = await fetch(
+        "/server/api/Questions/readOneQuestion.php",
+        {
+          method: "POST",
+          body: JSON.stringify({
+            question_id: this.question_id,
+          }),
+          headers: {
+            Accept: "application/json",
+            "Content-type": "application/json",
+          },
+        }
+      );
+      const question = await response.json();
+      if (question.error) {
+        this.isQuestionExist = false;
+      }
+      if (question.question) {
+        this.isQuestionExist = true;
+        this.question = question;
+        this.interval = setInterval(() => {
+          this.getAnswers();
+        }, 500);
+      }
     },
   },
 
   mounted() {
-    setInterval(() => {
-      this.getAnswers();
-    }, 500);
+    this.getQuestion();
   },
-  created: function () {
-    $.ajax({
-      method: "GET",
-      url: "http://localhost/ask-answer/src/php/getOneQuestion.php",
-      data: { question_id: this.question_id },
-      dataType: "JSON",
-      success: (data) => {
-        this.question = data;
-      },
-      error: () => {
-        console.log("error");
-      },
-    });
-
-    this.getAnswers();
+  destroyed() {
+    clearInterval(this.interval);
   },
 };
 </script>
 
 <style scoped lang="scss">
-.questions {
-  background-color: #474b4f;
-  border-radius: 15px;
-  min-height: 45vh;
+textarea {
+  caret-color: #fff !important;
+}
+.form-control:focus {
+  border-color: #fff !important;
+}
+.fade-enter,
+.fade-leave-to {
+  opacity: 0;
+  -webkit-transform: translateY(100px);
+  -moz-transform: translateY(100px);
+  -o-transform: translateY(100px);
+  transform: translateY(100px);
+}
 
-  .question {
-    color: #fff;
-    text-align: left;
-    padding: 13px 5px;
-    min-height: 100px;
-
-    .userImage {
-      border-radius: 50%;
-      margin-right: 5px;
-    }
-  }
-
-  hr {
-    height: 1px;
-    background-color: #fff;
-  }
-
-  .textarea {
-    padding: 10px;
-    textarea {
-      background-color: #6b6e70;
-      color: #fff;
-      outline: none;
-      border: none;
-      border-radius: 10px;
-      &::placeholder {
-        color: #fff;
-      }
-    }
+.fade-enter-active,
+.fade-leave-active {
+  -webkit-transition: all 0.7s ease;
+  -moz-transition: all 0.7s ease;
+  -o-transition: all 0.7s ease;
+  transition: all 0.7s ease;
+}
+@media screen and (min-width: 1400px) {
+  .container {
+    max-width: 1140px;
   }
 }
 </style>

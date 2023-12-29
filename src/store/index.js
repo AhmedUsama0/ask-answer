@@ -16,11 +16,19 @@ export default new Vuex.Store({
     username: null,
     userImage: null,
     user_id: null,
+    userEmail: null,
+    date: null,
+    about: null,
+    password: null,
   },
   getters: {
-    // getUsername: (state) => {
-    //   return state.username;
-    // },
+    getUserName: (state) => state.username,
+    getUserImage: (state) => state.userImage,
+    getUserEmail: (state) => state.userEmail,
+    getUserDate: (state) => state.date,
+    getUserAbout: (state) => state.about,
+    getUserPassword: (state) => state.password,
+    getUserId: (state) => state.user_id,
   },
   mutations: {
     setAuthentication(state, status) {
@@ -36,6 +44,18 @@ export default new Vuex.Store({
     },
     setUserId(state, user_id) {
       state.user_id = user_id;
+    },
+    setUserEmail(state, userEmail) {
+      state.userEmail = userEmail;
+    },
+    setUserDate(state, date) {
+      state.date = date;
+    },
+    setUserAbout(state, about) {
+      state.about = about;
+    },
+    setUserPassword(state, password) {
+      state.password = password;
     },
   },
   actions: {},

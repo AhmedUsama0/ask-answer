@@ -1,12 +1,19 @@
 <template>
   <div class="messages">
-    <div v-for="message in messages" :key="message['messages']" class="message">
-      <div v-if="message['from'] === username" class="myMessage">
-        {{ message["from"] }}: {{ message["message"] }}
-      </div>
+    <div class="message-not-exist" v-if="!isMessagesExist">No Messages</div>
+    <div v-if="isMessagesExist">
+      <div
+        v-for="message in messages"
+        :key="message.message_id"
+        class="message"
+      >
+        <div v-if="message.fromUser === username" class="myMessage">
+          {{ message.fromUser }}: {{ message.message }}
+        </div>
 
-      <div v-else class="userMessage">
-        {{ message["from"] }}: {{ message["message"] }}
+        <div v-else class="userMessage">
+          {{ message.fromUser }}: {{ message.message }}
+        </div>
       </div>
     </div>
   </div>
@@ -20,7 +27,15 @@ export default {
     };
   },
   name: "UsersMessages",
-  props: ["messages"],
+  props: {
+    messages: {
+      type: Array,
+    },
+    isMessagesExist: {
+      type: Boolean,
+      default: false,
+    },
+  },
 };
 </script>
 
@@ -30,7 +45,7 @@ export default {
     overflow-y: scroll;
     max-height: 300px;
     min-height: 290px;
-    background-color: #474b4f;
+    background-color: #474b4f !important;
     display: flex;
     //reverse the sorting of elements. elements above be down and
     // elements down be above. also I sorted the answers in DESC order
@@ -42,7 +57,7 @@ export default {
     .message {
       padding: 5px;
       .myMessage {
-        background-color: gray;
+        background-color: gray !important;
         border-radius: 3px 15px 15px 15px;
         padding: 10px;
         color: #fff;
@@ -50,13 +65,21 @@ export default {
         word-wrap: break-word;
       }
       .userMessage {
-        background-color: #38393a;
+        background-color: #38393a !important;
         border-radius: 3px 15px 15px 15px;
         padding: 10px;
         color: #fff;
         text-align: left;
         word-wrap: break-word;
       }
+    }
+    .message-not-exist {
+      height: 290px;
+      color: #fff;
+      font-size: 30px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
     }
   }
 }

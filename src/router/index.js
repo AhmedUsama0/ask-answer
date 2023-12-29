@@ -4,11 +4,10 @@ import store from "@/store/index.js";
 import LogInView from "@/views/LogInView.vue";
 import ForumView from "@/views/ForumView.vue";
 import RegisterView from "@/views/RegisterView.vue";
-import MyQuestionsView from "@/views/MyQuestionsView.vue";
-import UserQuestionView from "@/views/UserQuestionView.vue";
 import AskQuestionView from "@/views/AskQuestionView.vue";
 import ProfileView from "@/views/ProfileView.vue";
 import UserProfileView from "@/views/UserProfileView.vue";
+import MessagesView from "@/views/MessagesView.vue";
 
 Vue.use(VueRouter);
 
@@ -35,7 +34,7 @@ const routes = [
   {
     path: "/question/:id",
     name: "question",
-    component: UserQuestionView,
+    component: () => import("@/views/UserQuestionView.vue"),
     beforeEnter: (to, from, next) => {
       if (store.state.authenticated === false) {
         next("/login");
@@ -49,19 +48,6 @@ const routes = [
     path: "/forum",
     name: "forum",
     component: ForumView,
-    beforeEnter: (to, from, next) => {
-      if (store.state.authenticated === false) {
-        next("/login");
-      } else {
-        next();
-      }
-    },
-  },
-
-  {
-    path: "/myQuestions",
-    name: "myQuestions",
-    component: MyQuestionsView,
     beforeEnter: (to, from, next) => {
       if (store.state.authenticated === false) {
         next("/login");
@@ -124,14 +110,15 @@ const routes = [
       }
     },
   },
+
   {
-    path: "/about",
-    name: "about",
-    // route level code-splitting
-    // this generates a separate chunk (about.[hash].js) for this route
-    // which is lazy-loaded when the route is visited.
-    component: () =>
-      import(/* webpackChunkName: "about" */ "../views/AboutView.vue"),
+    path: "/messages",
+    name: "messages",
+    component: MessagesView,
+    beforeEnter: (to, from, next) => {
+      if (store.state.authenticated === false) next("/login");
+      else next();
+    },
   },
 ];
 

@@ -1,54 +1,158 @@
 <template>
-  <nav class="col-12">
-    <div class="welcome" @click="showList">
-      <img
-        :src="require(`@/php/uploads/${userImage}`)"
-        alt=""
-        width="45px"
-        height="45px"
-      />
-      <span>{{ username }}</span>
+  <header
+    class="p-2 border-bottom border-opacity-25 border-secondary"
+    id="header"
+  >
+    <div
+      class="d-flex justify-content-between align-items-md-center flex-column flex-md-row"
+      style="gap: 40px 5px"
+    >
+      <div class="w-auto mx-auto mx-md-0">
+        <div class="dropdown-center text-white">
+          <div
+            class="d-flex gap-2 align-items-center justify-content-center justify-content-md-start mb-2 mb-md-0 dropdown-toggle"
+            role="button"
+            data-bs-toggle="dropdown"
+            aria-expanded="false"
+          >
+            <img
+              :src="'/server/uploads/' + this.$store.getters.getUserImage"
+              width="50px"
+              height="50px"
+              class="rounded-circle"
+            />
+            <div class="text-white fw-bold">
+              {{ this.$store.getters.getUserName }}
+            </div>
+          </div>
+          <ul class="dropdown-menu bg-dark shadow text-white">
+            <li
+              class="dropdown-item text-white"
+              @click="redirect"
+              role="button"
+            >
+              Profile
+            </li>
+            <li class="dropdown-item text-white" @click="logOut" role="button">
+              LogOut
+            </li>
+          </ul>
+        </div>
+      </div>
+      <div class="position-relative col col-lg-5">
+        <div class="position-relative">
+          <input
+            type="search"
+            class="form-control text-bg-dark shadow-none"
+            style="padding-left: 40px"
+            placeholder="Search The Users"
+            v-model="pattern"
+          />
+          <i
+            class="fa fa-search text-white fs-4 position-absolute top-50 translate-middle"
+            style="left: 20px"
+          ></i>
+        </div>
+        <ul
+          class="list-group position-absolute w-100 overflow-auto"
+          style="z-index: 50; height: 400px"
+          v-if="isUsersExist"
+        >
+          <li
+            class="list-group-item text-bg-dark bg-gradient ps-1"
+            v-for="user in users"
+            :key="user.user_id"
+            @click="showProfile(user.user_id)"
+            role="button"
+          >
+            <div class="hstack" style="gap: 0 5px">
+              <img
+                :src="'/server/uploads/' + user.image"
+                alt="userimage"
+                class="rounded-circle"
+                width="50px"
+                height="50px"
+              />
+              <span>{{ user.username }}</span>
+            </div>
+          </li>
+        </ul>
+      </div>
+      <nav class="nav fs-6 justify-content-between justify-content-md-center">
+        <div class="position-relative">
+          <router-link
+            to="/messages"
+            class="nav-link text-white fw-bold text-capitalize"
+            >messages</router-link
+          >
+          <span
+            class="position-absolute rounded-circle text-bg-danger top-0 start-0 d-flex justify-content-center align-items-center"
+            style="width: 1.3em; height: 1.3em"
+            >{{ numberOfUnReadMessages }}</span
+          >
+        </div>
+        <AskQuestionView />
+        <router-link
+          to="/forum"
+          class="nav-link text-white fw-bold text-capitalize"
+          >allquestions</router-link
+        >
+      </nav>
     </div>
-    <ul class="profile col-3 col-md-1" id="profile">
-      <li @click="redirect">profile</li>
-      <li @click="logOut">logOut</li>
-    </ul>
-    <ul class="nav-links">
-      <li>
-        <router-link to="/myQuestions">MyQuestions</router-link>
-      </li>
-      <li>
-        <router-link to="/askQuestion">AskQuestion</router-link>
-      </li>
-      <li>
-        <router-link to="/forum">All Questions</router-link>
-      </li>
-    </ul>
-  </nav>
+  </header>
 </template>
 
 <script>
-import $ from "jquery";
+import AskQuestionView from "@/views/AskQuestionView.vue";
+import viewProfile from "@/js/viewProfile";
 export default {
   name: "NavBar",
-
+  components: {
+    AskQuestionView,
+  },
   data() {
     return {
-      username: this.$store.state.username,
-      userImage: "male.png",
+      pattern: "",
+      users: [],
+      isUsersExist: false,
+      numberOfUnReadMessages: 0,
     };
   },
-
-  mounted() {
-    if (this.$store.state.userImage !== null) {
-      this.userImage = this.$store.state.userImage;
-    }
-  },
   methods: {
-    showList() {
-      $("#profile").slideToggle("fast");
+    showProfile(user_id) {
+      viewProfile(user_id);
+    },
+    async search() {
+      if (!this.pattern.trim()) {
+        this.isUsersExist = false;
+        return;
+      }
+
+      const response = await fetch("/server/api/Users/searchUsers.php", {
+        method: "POST",
+        body: JSON.stringify({ pattern: this.pattern.trim() }),
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+      });
+
+      const users = await response.json();
+
+      if (users.length === 0) {
+        this.isUsersExist = false;
+        return;
+      }
+
+      this.isUsersExist = true;
+
+      this.users = users;
     },
     redirect() {
+      if (this.$router.currentRoute.name === "profile") {
+        this.$router.go();
+        return;
+      }
       this.$router.push({ name: "profile" });
     },
     logOut() {
@@ -58,78 +162,55 @@ export default {
       this.$store.commit("setUserId", null);
       this.$router.replace({ name: "LogIn" });
     },
+    getNumberOfUnReadMessages() {
+      fetch("/server/api/Messages/getNumberOfUnReadMessages.php", {
+        method: "POST",
+        body: JSON.stringify({ receiver: this.$store.getters.getUserId }),
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+      })
+        .then((response) => response.json())
+        .then(
+          (data) => (this.numberOfUnReadMessages = data.numberOfUnReadMessages)
+        );
+    },
+  },
+  watch: {
+    pattern() {
+      this.search();
+    },
+  },
+  mounted() {
+    this.getNumberOfUnReadMessages();
+    setInterval(() => {
+      this.getNumberOfUnReadMessages();
+    }, 1000);
   },
 };
 </script>
 
-<style scoped lang="scss">
-nav {
-  padding: 13px 5px;
-  background-color: #fff;
-  display: flex;
-  align-items: center;
-  position: relative;
-  .profile {
-    position: absolute;
-    z-index: 3;
-    top: 65px;
-    left: 0px;
-    background-color: #474b4f;
-    list-style-type: none;
-    padding: 0px;
-    display: none;
-
-    li {
-      text-align: left;
-      padding: 10px;
-      color: #fff;
-      cursor: pointer;
-      &:first-child {
-        margin-bottom: 10px;
-      }
-      &:hover {
-        background-color: #6b6e70;
-      }
-    }
-  }
-  .nav-links {
-    text-align: center;
-    margin: 0 auto;
-    list-style-type: none;
-    li {
-      display: inline-block;
-      a {
-        padding: 5px;
-        font-size: clamp(10px, 16px, 20px);
-      }
-    }
-  }
-  .welcome {
-    float: left;
-    display: flex;
-    justify-content: flex-start;
-    align-items: center;
-    gap: 5px;
-    cursor: pointer;
-    img {
-      border-radius: 50%;
-    }
-    span {
-      float: left;
-    }
+<style lang="scss">
+.list-group-item:hover {
+  background-color: #394f8a !important;
+}
+.nav-link {
+  &.router-link-exact-active {
+    color: #ff6a3d !important;
   }
 }
+.dropdown-item:hover {
+  background-color: #394f8a !important;
+}
+::-webkit-scrollbar {
+  width: 10px;
+}
+::-webkit-scrollbar-thumb {
+  background-color: #394f8a !important;
+}
 
-@media screen and (max-width: 400px) {
-  nav {
-    ul {
-      li {
-        a {
-          font-size: 11px;
-          padding: 2px;
-        }
-      }
-    }
-  }
+::-webkit-scrollbar-track {
+  background-color: gray !important;
 }
 </style>
